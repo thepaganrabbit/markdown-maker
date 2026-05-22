@@ -1,24 +1,9 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import { env } from '@/lib/env';
 
-function getAccessSecret(): string {
-  const value = process.env.JWT_ACCESS_SECRET;
-  if (!value) {
-    throw new Error('JWT_ACCESS_SECRET must be set');
-  }
-  return value;
-}
-
-function getRefreshSecret(): string {
-  const value = process.env.JWT_REFRESH_SECRET;
-  if (!value) {
-    throw new Error('JWT_REFRESH_SECRET must be set');
-  }
-  return value;
-}
-
-const ACCESS_TTL = process.env.ACCESS_TOKEN_TTL ?? '15m';
-const REFRESH_TTL_DAYS = Number(process.env.REFRESH_TOKEN_TTL_DAYS ?? 30);
+const ACCESS_TTL = env.ACCESS_TOKEN_TTL;
+const REFRESH_TTL_DAYS = env.REFRESH_TOKEN_TTL_DAYS;
 
 type JwtPayload = {
   sub: string;
@@ -107,25 +92,21 @@ export function verify(token: string, secret: string): JwtPayload | null {
 }
 
 export function createAccessToken(userId: string, email: string) {
-  return sign({ sub: userId, email, type: 'access' }, getAccessSecret(), parseTtl(ACCESS_TTL));
+  return sign({ sub: userId, email, type: 'access' }, env.JWT_ACCESS_SECRET, parseTtl(ACCESS_TTL));
 }
 
 export function createRefreshToken(userId: string, email: string) {
-  return sign(
-    { sub: userId, email, type: 'refresh' },
-    getRefreshSecret(),
-    REFRESH_TTL_DAYS * 24 * 60 * 60
-  );
+  return sign({ sub: userId, email, type: 'refresh' }, env.JWT_REFRESH_SECRET, REFRESH_TTL_DAYS * 24 * 60 * 60);
 }
 
 export function verifyAccessToken(token: string) {
-  const payload = verify(token, getAccessSecret());
+  const payload = verify(token, env.JWT_ACCESS_SECRET);
   if (!payload || payload.type !== 'access') return null;
   return payload;
 }
 
 export function verifyRefreshToken(token: string) {
-  const payload = verify(token, getRefreshSecret());
+  const payload = verify(token, env.JWT_REFRESH_SECRET);
   if (!payload || payload.type !== 'refresh') return null;
   return payload;
 }

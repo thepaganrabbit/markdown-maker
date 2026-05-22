@@ -1,3 +1,4 @@
+import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import {
@@ -8,9 +9,16 @@ import {
   verifyRefreshToken
 } from '@/lib/auth';
 import { accessCookieOptions } from '@/lib/authCookies';
+import { ensureCsrfCookie } from '@/lib/csrf';
+import { getDb } from '@/lib/mongodb';
+import type { User } from '@/lib/models';
 import { findSession, replaceSession } from '@/lib/session';
+import { rateLimit } from '@/lib/security';
 
-export async function POST() {
+export async function POST(request: Request) {
+  const limited = rateLimit(request, { keyPrefix: 'auth:refresh', windowMs: 60_000, limit: 20 });
+  if (limited) return limited;
+
   const refreshToken = cookies().get('refreshToken')?.value;
 
   if (!refreshToken) {
@@ -27,6 +35,13 @@ export async function POST() {
     return NextResponse.json({ error: 'Session expired' }, { status: 401 });
   }
 
+  const db = await getDb();
+  const users = db.collection<User>('users');
+  const dbUser = ObjectId.isValid(payload.sub) ? await users.findOne({ _id: new ObjectId(payload.sub) }) : null;
+  if (!dbUser) {
+    return NextResponse.json({ error: 'User not found' }, { status: 401 });
+  }
+
   const newAccessToken = createAccessToken(payload.sub, payload.email);
   const newRefreshToken = createRefreshToken(payload.sub, payload.email);
   const newRefreshExpiresAt = refreshTokenExpiresAt();
@@ -35,9 +50,10 @@ export async function POST() {
 
   const response = NextResponse.json({
     accessToken: newAccessToken,
-    user: { id: payload.sub, email: payload.email }
+    user: { id: payload.sub, email: payload.email, role: dbUser.role }
   });
   response.cookies.set('refreshToken', newRefreshToken, refreshCookieOptions());
   response.cookies.set('accessToken', newAccessToken, accessCookieOptions());
+  ensureCsrfCookie(response);
   return response;
 }

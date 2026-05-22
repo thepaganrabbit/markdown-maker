@@ -1,8 +1,12 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { verifyCsrfForCookieAuth } from '@/lib/csrf';
 import { deleteSession } from '@/lib/session';
 
-export async function POST() {
+export async function POST(request: Request) {
+  const csrfError = verifyCsrfForCookieAuth(request);
+  if (csrfError) return csrfError;
+
   const refreshToken = cookies().get('refreshToken')?.value;
 
   if (refreshToken) {

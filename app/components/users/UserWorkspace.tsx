@@ -1,8 +1,41 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-type ElementType = 'heading' | 'text' | 'line' | 'table';
+type ElementType =
+  | 'heading'
+  | 'heading2'
+  | 'heading3'
+  | 'heading4'
+  | 'boldHeading'
+  | 'text'
+  | 'line'
+  | 'table'
+  | 'code'
+  | 'definition'
+  | 'task'
+  | 'image'
+  | 'olist'
+  | 'ulist';
+
+const KNOWN_CODE_LANGUAGES = [
+  'plaintext',
+  'javascript',
+  'typescript',
+  'python',
+  'java',
+  'csharp',
+  'cpp',
+  'go',
+  'ruby',
+  'php',
+  'rust',
+  'bash',
+  'json',
+  'yaml',
+  'markdown'
+] as const;
 
 type TableData = {
   headers: string[];
@@ -15,6 +48,28 @@ type CanvasItem = {
   row: number;
   content?: string;
   table?: TableData;
+  code?: {
+    language: string;
+    customLanguage: string;
+    useCustomLanguage: boolean;
+    content: string;
+  };
+  definition?: {
+    term: string;
+    description: string;
+  };
+  task?: {
+    checked: boolean;
+    label: string;
+  };
+  image?: {
+    source: 'url' | 'upload';
+    url: string;
+    alt: string;
+  };
+  list?: {
+    items: string[];
+  };
 };
 
 type DocListItem = {
@@ -27,6 +82,17 @@ type DocListItem = {
 const GRID_ROW_PX = 44;
 const INITIAL_ROWS = 18;
 const DRAFT_STORAGE_KEY = 'doc-u-maker:workspace-draft:v1';
+const CSRF_HEADER = 'x-csrf-token';
+
+function getCookieValue(name: string) {
+  const token = document.cookie
+    .split('; ')
+    .find((part) => part.startsWith(`${name}=`))
+    ?.split('=')
+    .slice(1)
+    .join('=');
+  return token ? decodeURIComponent(token) : null;
+}
 
 function createEmptyTable(columnCount = 3, rowCount = 2): TableData {
   return {
@@ -35,22 +101,78 @@ function createEmptyTable(columnCount = 3, rowCount = 2): TableData {
   };
 }
 
+function splitMarkdownBlocks(content: string) {
+  const lines = content.split('\n');
+  const blocks: string[] = [];
+  let current: string[] = [];
+  let inFence = false;
+
+  for (const line of lines) {
+    if (line.trim().startsWith('```')) inFence = !inFence;
+
+    if (!inFence && line.trim() === '') {
+      if (current.length > 0) {
+        blocks.push(current.join('\n').trim());
+        current = [];
+      }
+      continue;
+    }
+
+    current.push(line);
+  }
+
+  if (current.length > 0) blocks.push(current.join('\n').trim());
+  return blocks.filter(Boolean);
+}
+
 function toMarkdown(items: CanvasItem[]) {
   const ordered = [...items].sort((a, b) => a.row - b.row);
   return ordered
     .map((item) => {
       if (item.type === 'heading') return `# ${item.content ?? 'Main Heading'}`;
+      if (item.type === 'heading2') return `## ${item.content ?? 'Sub Heading'}`;
+      if (item.type === 'heading3') return `### ${item.content ?? 'Sub Heading'}`;
+      if (item.type === 'heading4') return `#### ${item.content ?? 'Sub Heading'}`;
+      if (item.type === 'boldHeading') return `**${item.content ?? 'Bold Heading'}**`;
       if (item.type === 'text') return item.content ?? 'Text paragraph';
       if (item.type === 'table') {
         const table = item.table ?? createEmptyTable();
         const headers = table.headers.length > 0 ? table.headers : ['Column 1'];
-        const normalizedRows = table.rows.map((row) =>
-          headers.map((_, colIndex) => row[colIndex] ?? '')
-        );
+        const normalizedRows = table.rows.map((row) => headers.map((_, colIndex) => row[colIndex] ?? ''));
         const headerLine = `| ${headers.join(' | ')} |`;
         const separatorLine = `| ${headers.map(() => '---').join(' | ')} |`;
         const bodyLines = normalizedRows.map((row) => `| ${row.join(' | ')} |`);
         return [headerLine, separatorLine, ...bodyLines].join('\n');
+      }
+      if (item.type === 'code') {
+        const code = item.code ?? {
+          language: 'plaintext',
+          customLanguage: '',
+          useCustomLanguage: false,
+          content: ''
+        };
+        const language = code.useCustomLanguage ? code.customLanguage.trim() || 'plaintext' : code.language;
+        return `\`\`\`${language}\n${code.content || '// Code snippet'}\n\`\`\``;
+      }
+      if (item.type === 'definition') {
+        const definition = item.definition ?? { term: 'Term', description: 'Definition' };
+        return `${definition.term || 'Term'}\n: ${definition.description || 'Definition'}`;
+      }
+      if (item.type === 'task') {
+        const task = item.task ?? { checked: false, label: 'Task item' };
+        return `- [${task.checked ? 'x' : ' '}] ${task.label || 'Task item'}`;
+      }
+      if (item.type === 'image') {
+        const image = item.image ?? { source: 'url', url: 'https://placehold.co/1200x600/png', alt: 'Image' };
+        return `![${image.alt || 'Image'}](${image.url || 'https://placehold.co/1200x600/png'})`;
+      }
+      if (item.type === 'olist') {
+        const listItems = item.list?.items?.length ? item.list.items : ['First item'];
+        return listItems.map((entry, idx) => `${idx + 1}. ${entry || 'List item'}`).join('\n');
+      }
+      if (item.type === 'ulist') {
+        const listItems = item.list?.items?.length ? item.list.items : ['First item'];
+        return listItems.map((entry) => `- ${entry || 'List item'}`).join('\n');
       }
       return '---';
     })
@@ -58,14 +180,29 @@ function toMarkdown(items: CanvasItem[]) {
 }
 
 function fromMarkdown(content: string): CanvasItem[] {
-  const blocks = content.split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean);
+  const blocks = splitMarkdownBlocks(content);
+
   return blocks.map((block, index) => {
     if (block.startsWith('# ')) {
       return { id: `load-${index}`, type: 'heading' as const, row: index, content: block.slice(2) };
     }
+    if (block.startsWith('## ')) {
+      return { id: `load-${index}`, type: 'heading2' as const, row: index, content: block.slice(3) };
+    }
+    if (block.startsWith('### ')) {
+      return { id: `load-${index}`, type: 'heading3' as const, row: index, content: block.slice(4) };
+    }
+    if (block.startsWith('#### ')) {
+      return { id: `load-${index}`, type: 'heading4' as const, row: index, content: block.slice(5) };
+    }
+    const boldHeadingMatch = block.match(/^\*\*([\s\S]+)\*\*$/);
+    if (boldHeadingMatch) {
+      return { id: `load-${index}`, type: 'boldHeading' as const, row: index, content: boldHeadingMatch[1] };
+    }
     if (block === '---') {
       return { id: `load-${index}`, type: 'line' as const, row: index };
     }
+
     const lines = block.split('\n').map((line) => line.trim());
     const isTable =
       lines.length >= 2 &&
@@ -90,6 +227,89 @@ function fromMarkdown(content: string): CanvasItem[] {
         }
       };
     }
+
+    const codeMatch = block.match(/^```([^\n]*)\n([\s\S]*?)\n```$/);
+    if (codeMatch) {
+      const language = codeMatch[1].trim() || 'plaintext';
+      const knownLanguages = new Set<string>(KNOWN_CODE_LANGUAGES);
+      const isKnown = knownLanguages.has(language);
+      return {
+        id: `load-${index}`,
+        type: 'code' as const,
+        row: index,
+        code: {
+          language: isKnown ? language : 'plaintext',
+          customLanguage: isKnown ? '' : language,
+          useCustomLanguage: !isKnown,
+          content: codeMatch[2]
+        }
+      };
+    }
+
+    const definitionMatch = block.match(/^([^\n]+)\n:\s+([\s\S]+)$/);
+    if (definitionMatch) {
+      return {
+        id: `load-${index}`,
+        type: 'definition' as const,
+        row: index,
+        definition: {
+          term: definitionMatch[1],
+          description: definitionMatch[2]
+        }
+      };
+    }
+
+    const taskMatch = block.match(/^- \[( |x|X)\] (.+)$/);
+    if (taskMatch) {
+      return {
+        id: `load-${index}`,
+        type: 'task' as const,
+        row: index,
+        task: {
+          checked: taskMatch[1].toLowerCase() === 'x',
+          label: taskMatch[2]
+        }
+      };
+    }
+
+    const imageMatch = block.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (imageMatch) {
+      return {
+        id: `load-${index}`,
+        type: 'image' as const,
+        row: index,
+        image: {
+          source: imageMatch[2].startsWith('/api/uploads/') ? 'upload' : 'url',
+          alt: imageMatch[1],
+          url: imageMatch[2]
+        }
+      };
+    }
+
+    const orderedListLines = lines.filter((line) => /^\d+\.\s+/.test(line));
+    if (orderedListLines.length === lines.length && orderedListLines.length > 0) {
+      return {
+        id: `load-${index}`,
+        type: 'olist' as const,
+        row: index,
+        list: {
+          items: orderedListLines.map((line) => line.replace(/^\d+\.\s+/, ''))
+        }
+      };
+    }
+
+    const unorderedListLines = lines.filter((line) => /^[-*]\s+/.test(line));
+    if (unorderedListLines.length === lines.length && unorderedListLines.length > 0) {
+      return {
+        id: `load-${index}`,
+        type: 'ulist' as const,
+        row: index,
+        list: {
+          items: unorderedListLines.map((line) => line.replace(/^[-*]\s+/, ''))
+        }
+      };
+    }
+
     return { id: `load-${index}`, type: 'text' as const, row: index, content: block };
   });
 }
@@ -102,6 +322,9 @@ export default function UserWorkspace() {
   const [title, setTitle] = useState('Untitled document');
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [previewMode, setPreviewMode] = useState<'code' | 'rendered'>('code');
+  const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
+  const textInputRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
   const markdown = useMemo(() => toMarkdown(items), [items]);
   const orderedItems = useMemo(() => [...items].sort((a, b) => a.row - b.row), [items]);
@@ -113,7 +336,15 @@ export default function UserWorkspace() {
   }
 
   async function authFetch(input: RequestInfo | URL, init?: RequestInit) {
-    const response = await fetch(input, init);
+    const method = init?.method?.toUpperCase() ?? 'GET';
+    const headers = new Headers(init?.headers);
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      const csrfToken = getCookieValue('csrfToken');
+      if (csrfToken) headers.set(CSRF_HEADER, csrfToken);
+    }
+
+    const requestInit = { ...init, headers };
+    const response = await fetch(input, requestInit);
     if (response.status !== 401) return response;
 
     const refresh = await fetch('/api/auth/refresh', { method: 'POST' });
@@ -122,7 +353,7 @@ export default function UserWorkspace() {
       throw new Error('Session expired');
     }
 
-    return fetch(input, init);
+    return fetch(input, requestInit);
   }
 
   async function loadDocs() {
@@ -208,9 +439,30 @@ export default function UserWorkspace() {
       {
         id,
         type,
+        content:
+          type === 'heading'
+            ? 'Main Heading'
+            : type === 'heading2'
+              ? 'Sub Heading'
+              : type === 'heading3'
+                ? 'Sub Heading'
+                : type === 'heading4'
+                  ? 'Sub Heading'
+                  : type === 'boldHeading'
+                    ? 'Bold Heading'
+                    : type === 'text'
+                      ? 'Text paragraph'
+                      : undefined,
         row,
-        content: type === 'heading' ? 'Main Heading' : type === 'text' ? 'Text paragraph' : undefined,
-        table: type === 'table' ? createEmptyTable() : undefined
+        table: type === 'table' ? createEmptyTable() : undefined,
+        code:
+          type === 'code'
+            ? { language: 'plaintext', customLanguage: '', useCustomLanguage: false, content: '' }
+            : undefined,
+        definition: type === 'definition' ? { term: 'Term', description: 'Definition' } : undefined,
+        task: type === 'task' ? { checked: false, label: 'Task item' } : undefined,
+        image: type === 'image' ? { source: 'url', url: 'https://placehold.co/1200x600/png', alt: 'Image' } : undefined,
+        list: type === 'olist' || type === 'ulist' ? { items: ['First item'] } : undefined
       }
     ]);
     setDragType(null);
@@ -218,6 +470,131 @@ export default function UserWorkspace() {
 
   function updateContent(id: string, value: string) {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, content: value } : item)));
+  }
+
+  function updateList(itemId: string, value: string) {
+    const items = value
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId || (item.type !== 'olist' && item.type !== 'ulist')) return item;
+        return { ...item, list: { items } };
+      })
+    );
+  }
+
+  function applyInlineFormat(itemId: string, format: string) {
+    const textarea = textInputRefs.current[itemId];
+    if (!textarea) return;
+
+    const value = textarea.value;
+    const start = textarea.selectionStart ?? 0;
+    const end = textarea.selectionEnd ?? 0;
+    const selected = value.slice(start, end) || 'text';
+    let prefix = '';
+    let suffix = '';
+
+    if (format === 'bold') {
+      prefix = '**';
+      suffix = '**';
+    }
+    if (format === 'italic') {
+      prefix = '*';
+      suffix = '*';
+    }
+    if (format === 'strikethrough') {
+      prefix = '~~';
+      suffix = '~~';
+    }
+    if (format === 'highlight') {
+      prefix = '==';
+      suffix = '==';
+    }
+    if (format === 'subscript') {
+      prefix = '<sub>';
+      suffix = '</sub>';
+    }
+    if (format === 'superscript') {
+      prefix = '<sup>';
+      suffix = '</sup>';
+    }
+
+    const inserted = `${prefix}${selected}${suffix}`;
+
+    const next = `${value.slice(0, start)}${inserted}${value.slice(end)}`;
+    updateContent(itemId, next);
+
+    window.requestAnimationFrame(() => {
+      const ref = textInputRefs.current[itemId];
+      if (!ref) return;
+      ref.focus();
+      const selectionStart = start + prefix.length;
+      const selectionEnd = selectionStart + selected.length;
+      ref.setSelectionRange(selectionStart, selectionEnd);
+    });
+  }
+
+  function updateCode(itemId: string, patch: Partial<NonNullable<CanvasItem['code']>>) {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId || item.type !== 'code') return item;
+        const code = item.code ?? { language: 'plaintext', customLanguage: '', useCustomLanguage: false, content: '' };
+        return { ...item, code: { ...code, ...patch } };
+      })
+    );
+  }
+
+  function updateDefinition(itemId: string, patch: Partial<NonNullable<CanvasItem['definition']>>) {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId || item.type !== 'definition') return item;
+        const definition = item.definition ?? { term: 'Term', description: 'Definition' };
+        return { ...item, definition: { ...definition, ...patch } };
+      })
+    );
+  }
+
+  function updateTask(itemId: string, patch: Partial<NonNullable<CanvasItem['task']>>) {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId || item.type !== 'task') return item;
+        const task = item.task ?? { checked: false, label: 'Task item' };
+        return { ...item, task: { ...task, ...patch } };
+      })
+    );
+  }
+
+  function updateImage(itemId: string, patch: Partial<NonNullable<CanvasItem['image']>>) {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId || item.type !== 'image') return item;
+        const image = item.image ?? { source: 'url', url: '', alt: 'Image' };
+        return { ...item, image: { ...image, ...patch } };
+      })
+    );
+  }
+
+  async function uploadImage(itemId: string, file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    setUploadingItemId(itemId);
+    const response = await authFetch('/api/uploads', {
+      method: 'POST',
+      body: formData
+    });
+    setUploadingItemId(null);
+
+    if (!response.ok) {
+      setMessage('Failed to upload image.');
+      return;
+    }
+
+    const json = await response.json();
+    updateImage(itemId, { source: 'upload', url: json.url });
+    setMessage('Image uploaded.');
   }
 
   function updateTableHeader(itemId: string, columnIndex: number, value: string) {
@@ -346,26 +723,65 @@ export default function UserWorkspace() {
               <p className="text-muted small mb-3">Drag elements into the canvas. Content snaps to rows.</p>
 
               <div className="d-grid gap-2 mb-4">
-                {(['heading', 'text', 'line', 'table'] as ElementType[]).map((type) => (
-                  <button
-                    key={type}
-                    className="btn btn-outline-primary text-start"
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('application/doc-element', type);
-                      setDragType(type);
-                    }}
-                    onDragEnd={() => setDragType(null)}
-                  >
-                    {type === 'heading'
-                      ? 'Main heading'
-                      : type === 'text'
-                        ? 'Text block'
-                        : type === 'line'
-                          ? 'Horizontal line'
-                          : 'Table'}
-                  </button>
-                ))}
+                {(
+                  [
+                    'heading',
+                    'heading2',
+                    'heading3',
+                    'heading4',
+                    'boldHeading',
+                    'text',
+                    'line',
+                    'table',
+                    'code',
+                    'definition',
+                    'task',
+                    'image',
+                    'olist',
+                    'ulist'
+                  ] as ElementType[]
+                ).map(
+                  (type) => (
+                    <button
+                      key={type}
+                      className="btn btn-outline-primary text-start"
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('application/doc-element', type);
+                        setDragType(type);
+                      }}
+                      onDragEnd={() => setDragType(null)}
+                    >
+                      {type === 'heading'
+                        ? 'Main heading'
+                        : type === 'heading2'
+                          ? 'Sub Heading 1'
+                          : type === 'heading3'
+                            ? 'Sub Heading 2'
+                            : type === 'heading4'
+                              ? 'Sub Heading 3'
+                              : type === 'boldHeading'
+                                ? 'Bold Heading'
+                        : type === 'text'
+                          ? 'Text block'
+                          : type === 'line'
+                            ? 'Horizontal line'
+                            : type === 'table'
+                              ? 'Table'
+                              : type === 'code'
+                                ? 'Code block'
+                                : type === 'definition'
+                                  ? 'Definition list'
+                                  : type === 'task'
+                                    ? 'Task list'
+                                    : type === 'image'
+                                      ? 'Image block'
+                                      : type === 'olist'
+                                        ? 'Ordered list'
+                                        : 'Unordered list'}
+                    </button>
+                  )
+                )}
               </div>
 
               <label className="form-label">Document Title</label>
@@ -434,13 +850,64 @@ export default function UserWorkspace() {
                       onChange={(e) => updateContent(item.id, e.target.value)}
                     />
                   ) : null}
-                  {item.type === 'text' ? (
-                    <textarea
-                      className="form-control border-0 px-0"
-                      rows={2}
+                  {item.type === 'heading2' ? (
+                    <input
+                      className="form-control border-0 px-0 fw-semibold"
                       value={item.content ?? ''}
                       onChange={(e) => updateContent(item.id, e.target.value)}
                     />
+                  ) : null}
+                  {item.type === 'heading3' ? (
+                    <input
+                      className="form-control form-control-sm border-0 px-0 fw-semibold"
+                      value={item.content ?? ''}
+                      onChange={(e) => updateContent(item.id, e.target.value)}
+                    />
+                  ) : null}
+                  {item.type === 'heading4' ? (
+                    <input
+                      className="form-control form-control-sm border-0 px-0"
+                      value={item.content ?? ''}
+                      onChange={(e) => updateContent(item.id, e.target.value)}
+                    />
+                  ) : null}
+                  {item.type === 'boldHeading' ? (
+                    <input
+                      className="form-control border-0 px-0 fw-bold"
+                      value={item.content ?? ''}
+                      onChange={(e) => updateContent(item.id, e.target.value)}
+                    />
+                  ) : null}
+                  {item.type === 'text' ? (
+                    <div className="pt-2 pe-4">
+                      <select
+                        className="form-select form-select-sm mb-2"
+                        defaultValue=""
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (!value) return;
+                          applyInlineFormat(item.id, value);
+                          e.currentTarget.value = '';
+                        }}
+                      >
+                        <option value="">Insert formatting...</option>
+                        <option value="bold">Bold</option>
+                        <option value="italic">Italic</option>
+                        <option value="strikethrough">Strikethrough</option>
+                        <option value="highlight">Highlight</option>
+                        <option value="subscript">Subscript</option>
+                        <option value="superscript">Superscript</option>
+                      </select>
+                      <textarea
+                        ref={(node) => {
+                          textInputRefs.current[item.id] = node;
+                        }}
+                        className="form-control border-0 px-0"
+                        rows={2}
+                        value={item.content ?? ''}
+                        onChange={(e) => updateContent(item.id, e.target.value)}
+                      />
+                    </div>
                   ) : null}
                   {item.type === 'line' ? <hr className="my-3" /> : null}
                   {item.type === 'table' ? (
@@ -496,9 +963,7 @@ export default function UserWorkspace() {
                                     <input
                                       className="form-control form-control-sm"
                                       value={cell}
-                                      onChange={(e) =>
-                                        updateTableCell(item.id, rowIndex, colIndex, e.target.value)
-                                      }
+                                      onChange={(e) => updateTableCell(item.id, rowIndex, colIndex, e.target.value)}
                                     />
                                   </td>
                                 ))}
@@ -507,6 +972,150 @@ export default function UserWorkspace() {
                           </tbody>
                         </table>
                       </div>
+                    </div>
+                  ) : null}
+                  {item.type === 'code' ? (
+                    <div className="pt-2 pe-4">
+                      <div className="row g-2 mb-2">
+                        <div className="col-7">
+                          <label className="form-label mb-1 small">Language</label>
+                          <select
+                            className="form-select form-select-sm"
+                            value={item.code?.useCustomLanguage ? '__custom__' : item.code?.language ?? 'plaintext'}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value === '__custom__') {
+                                updateCode(item.id, { useCustomLanguage: true });
+                                return;
+                              }
+                              updateCode(item.id, { language: value, useCustomLanguage: false });
+                            }}
+                          >
+                            {KNOWN_CODE_LANGUAGES.map((language) => (
+                              <option key={language} value={language}>
+                                {language}
+                              </option>
+                            ))}
+                            <option value="__custom__">Custom...</option>
+                          </select>
+                        </div>
+                        {item.code?.useCustomLanguage ? (
+                          <div className="col-5">
+                            <label className="form-label mb-1 small">Custom</label>
+                            <input
+                              className="form-control form-control-sm"
+                              value={item.code?.customLanguage ?? ''}
+                              onChange={(e) => updateCode(item.id, { customLanguage: e.target.value })}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                      <textarea
+                        className="form-control form-control-sm"
+                        rows={4}
+                        value={item.code?.content ?? ''}
+                        onChange={(e) => updateCode(item.id, { content: e.target.value })}
+                      />
+                    </div>
+                  ) : null}
+                  {item.type === 'definition' ? (
+                    <div className="pt-2 pe-4">
+                      <label className="form-label mb-1 small">Term</label>
+                      <input
+                        className="form-control form-control-sm mb-2"
+                        value={item.definition?.term ?? ''}
+                        onChange={(e) => updateDefinition(item.id, { term: e.target.value })}
+                      />
+                      <label className="form-label mb-1 small">Definition</label>
+                      <textarea
+                        className="form-control form-control-sm"
+                        rows={2}
+                        value={item.definition?.description ?? ''}
+                        onChange={(e) => updateDefinition(item.id, { description: e.target.value })}
+                      />
+                    </div>
+                  ) : null}
+                  {item.type === 'task' ? (
+                    <div className="pt-2 pe-4 d-flex align-items-center gap-2">
+                      <input
+                        className="form-check-input mt-0"
+                        type="checkbox"
+                        checked={item.task?.checked ?? false}
+                        onChange={(e) => updateTask(item.id, { checked: e.target.checked })}
+                      />
+                      <input
+                        className="form-control form-control-sm"
+                        value={item.task?.label ?? ''}
+                        onChange={(e) => updateTask(item.id, { label: e.target.value })}
+                      />
+                    </div>
+                  ) : null}
+                  {item.type === 'image' ? (
+                    <div className="pt-2 pe-4">
+                      <label className="form-label mb-1 small">Alt text</label>
+                      <input
+                        className="form-control form-control-sm mb-2"
+                        value={item.image?.alt ?? ''}
+                        onChange={(e) => updateImage(item.id, { alt: e.target.value })}
+                      />
+                      <div className="btn-group btn-group-sm mb-2">
+                        <button
+                          type="button"
+                          className={`btn ${item.image?.source === 'url' ? 'btn-primary' : 'btn-outline-primary'}`}
+                          onClick={() => updateImage(item.id, { source: 'url' })}
+                        >
+                          URL
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn ${item.image?.source === 'upload' ? 'btn-primary' : 'btn-outline-primary'}`}
+                          onClick={() => updateImage(item.id, { source: 'upload' })}
+                        >
+                          Upload
+                        </button>
+                      </div>
+                      {item.image?.source === 'url' ? (
+                        <input
+                          className="form-control form-control-sm"
+                          placeholder="https://example.com/image.png"
+                          value={item.image?.url ?? ''}
+                          onChange={(e) => updateImage(item.id, { url: e.target.value })}
+                        />
+                      ) : (
+                        <div className="d-grid gap-2">
+                          <input
+                            className="form-control form-control-sm"
+                            readOnly
+                            placeholder="Uploaded image URL"
+                            value={item.image?.url ?? ''}
+                          />
+                          <label className="btn btn-outline-secondary btn-sm mb-0">
+                            {uploadingItemId === item.id ? 'Uploading...' : 'Upload Image'}
+                            <input
+                              type="file"
+                              className="d-none"
+                              accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                uploadImage(item.id, file).catch(() => setMessage('Failed to upload image.'));
+                                e.currentTarget.value = '';
+                              }}
+                            />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                  {item.type === 'olist' || item.type === 'ulist' ? (
+                    <div className="pt-2 pe-4">
+                      <label className="form-label mb-1 small">One item per line</label>
+                      <textarea
+                        className="form-control form-control-sm"
+                        rows={4}
+                        value={(item.list?.items ?? []).join('\n')}
+                        onChange={(e) => updateList(item.id, e.target.value)}
+                      />
                     </div>
                   ) : null}
                 </div>
@@ -518,8 +1127,23 @@ export default function UserWorkspace() {
         <section className="col-12 col-lg-3">
           <div className="card shadow-sm h-100">
             <div className="card-body d-flex flex-column">
-              <h2 className="h6">Markdown Preview</h2>
-              <pre className="markdown-preview flex-grow-1">{markdown || '# Empty canvas'}</pre>
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <h2 className="h6 mb-0">Markdown Preview</h2>
+                <button
+                  className="btn btn-sm btn-outline-secondary"
+                  onClick={() => setPreviewMode((prev) => (prev === 'code' ? 'rendered' : 'code'))}
+                >
+                  {previewMode === 'code' ? 'Rendered Preview' : 'Code Preview'}
+                </button>
+              </div>
+
+              {previewMode === 'code' ? (
+                <pre className="markdown-preview flex-grow-1">{markdown || '# Empty canvas'}</pre>
+              ) : (
+                <div className="markdown-rendered flex-grow-1">
+                  <ReactMarkdown>{markdown || '# Empty canvas'}</ReactMarkdown>
+                </div>
+              )}
             </div>
           </div>
         </section>

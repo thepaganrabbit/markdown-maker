@@ -6,7 +6,18 @@ import { useEffect, useState } from 'react';
 type User = {
   id: string;
   email: string;
+  role: 'user' | 'admin';
 };
+
+function getCookieValue(name: string) {
+  const token = document.cookie
+    .split('; ')
+    .find((part) => part.startsWith(`${name}=`))
+    ?.split('=')
+    .slice(1)
+    .join('=');
+  return token ? decodeURIComponent(token) : null;
+}
 
 export default function HomeClient() {
   const [user, setUser] = useState<User | null>(null);
@@ -38,7 +49,10 @@ export default function HomeClient() {
   }, []);
 
   async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    const headers = new Headers();
+    const csrfToken = getCookieValue('csrfToken');
+    if (csrfToken) headers.set('x-csrf-token', csrfToken);
+    await fetch('/api/auth/logout', { method: 'POST', headers });
     localStorage.removeItem('accessToken');
     localStorage.removeItem('userEmail');
     setUser(null);
@@ -61,6 +75,11 @@ export default function HomeClient() {
               <Link className="btn btn-primary" href="/users">
                 Open Workspace
               </Link>
+              {user.role === 'admin' ? (
+                <Link className="btn btn-outline-dark" href="/admin">
+                  Admin Panel
+                </Link>
+              ) : null}
               <button className="btn btn-outline-danger" onClick={logout}>
                 Logout
               </button>

@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAccessTokenEdge } from '@/lib/authEdge';
 
 export async function middleware(request: NextRequest) {
-  if (!request.nextUrl.pathname.startsWith('/users')) {
+  const pathname = request.nextUrl.pathname;
+  const protectedRoute =
+    pathname.startsWith('/users') || pathname.startsWith('/admin') || pathname.startsWith('/settings');
+  if (!protectedRoute) {
     return NextResponse.next();
   }
 
@@ -18,5 +21,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/users/:path*']
+  matcher: ['/users/:path*', '/admin/:path*', '/settings/:path*']
 };

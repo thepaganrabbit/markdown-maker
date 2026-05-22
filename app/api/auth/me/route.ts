@@ -1,21 +1,23 @@
-import { cookies } from 'next/headers';
+import { ObjectId } from 'mongodb';
 import { NextResponse } from 'next/server';
-import { verifyAccessToken } from '@/lib/auth';
+import { getDb } from '@/lib/mongodb';
+import type { User } from '@/lib/models';
+import { getUserFromRequest } from '@/lib/requestAuth';
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get('authorization');
-  const headerToken = authHeader?.startsWith('Bearer ') ? authHeader.replace('Bearer ', '') : null;
-  const cookieToken = cookies().get('accessToken')?.value;
+  const user = await getUserFromRequest(request);
 
-  const token = headerToken ?? cookieToken;
-  if (!token) {
-    return NextResponse.json({ error: 'Missing access token' }, { status: 401 });
+  if (!user) {
+    return NextResponse.json({ error: 'Missing or invalid access token' }, { status: 401 });
   }
 
-  const payload = verifyAccessToken(token);
-  if (!payload) {
-    return NextResponse.json({ error: 'Invalid access token' }, { status: 401 });
+  const db = await getDb();
+  const users = db.collection<User>('users');
+
+  const dbUser = ObjectId.isValid(user.sub) ? await users.findOne({ _id: new ObjectId(user.sub) }) : null;
+  if (!dbUser) {
+    return NextResponse.json({ error: 'User not found' }, { status: 401 });
   }
 
-  return NextResponse.json({ user: { id: payload.sub, email: payload.email } });
+  return NextResponse.json({ user: { id: dbUser._id!.toString(), email: dbUser.email, role: dbUser.role } });
 }

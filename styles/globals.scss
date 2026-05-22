@@ -1,11 +1,28 @@
 @import 'bootstrap/scss/bootstrap';
 
-:root {
+:root,
+html[data-theme='light'] {
   --app-bg: #f3efe8;
   --panel-bg: #fffdf8;
   --ink: #1f2937;
   --accent: #0b5ed7;
   --grid-line: rgba(31, 41, 55, 0.14);
+  --preview-bg: #111827;
+  --preview-fg: #f9fafb;
+  --rendered-bg: #ffffff;
+  --rendered-fg: #111827;
+}
+
+html[data-theme='dark'] {
+  --app-bg: #0f172a;
+  --panel-bg: #111827;
+  --ink: #e5e7eb;
+  --accent: #60a5fa;
+  --grid-line: rgba(229, 231, 235, 0.2);
+  --preview-bg: #020617;
+  --preview-fg: #e5e7eb;
+  --rendered-bg: #0b1220;
+  --rendered-fg: #e5e7eb;
 }
 
 body {
@@ -27,12 +44,14 @@ body {
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.users-main .card {
-  border-radius: 1rem;
+.users-main .card,
+.card {
+  background: var(--panel-bg);
+  color: var(--ink);
 }
 
 .canvas-shell {
-  background: #fff;
+  background: var(--panel-bg);
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 1rem;
   padding: 1rem;
@@ -60,7 +79,7 @@ body {
   left: 0;
   right: 0;
   min-height: 40px;
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--panel-bg) 92%, white);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 0.5rem;
   padding: 0.25rem 0.75rem;
@@ -96,13 +115,33 @@ body {
 }
 
 .markdown-preview {
-  background: #111827;
-  color: #f9fafb;
+  background: var(--preview-bg);
+  color: var(--preview-fg);
   border-radius: 0.75rem;
   padding: 0.75rem;
   max-height: 70vh;
   overflow: auto;
   white-space: pre-wrap;
+}
+
+.markdown-rendered {
+  background: var(--rendered-bg);
+  color: var(--rendered-fg);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.markdown-rendered table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.markdown-rendered th,
+.markdown-rendered td {
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  padding: 0.4rem;
 }
 
 .docs-list {
@@ -122,4 +161,17 @@ body {
 .doc-row.active {
   border-color: var(--accent);
   background: rgba(11, 94, 215, 0.08);
+}
+
+.app-navbar {
+  background: color-mix(in srgb, var(--panel-bg) 85%, transparent);
+  backdrop-filter: blur(6px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.app-nav-dropdown {
+  min-width: 180px;
+  z-index: 30;
 }

@@ -91,6 +91,11 @@ export default function AuthForm({ mode }: Props) {
             </>
           )}
         </p>
+        <div className="text-center mt-3">
+          <a className="btn btn-outline-secondary btn-sm" href="/api/auth/oauth2/login">
+            Continue with OAuth2
+          </a>
+        </div>
       </div>
     </div>
   );

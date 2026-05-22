@@ -2,10 +2,12 @@ import { ObjectId } from 'mongodb';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 import type { MarkdownDoc } from '@/lib/models';
+import { verifyCsrfForCookieAuth } from '@/lib/csrf';
 import { getUserFromRequest } from '@/lib/requestAuth';
+import { docMutationSchema, parseJson } from '@/lib/validation';
 
 export async function GET(request: Request) {
-  const user = getUserFromRequest(request);
+  const user = await getUserFromRequest(request);
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -30,15 +32,16 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const user = getUserFromRequest(request);
+  const csrfError = verifyCsrfForCookieAuth(request);
+  if (csrfError) return csrfError;
+
+  const user = await getUserFromRequest(request);
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { title, content } = await request.json();
-  if (!title || !content) {
-    return NextResponse.json({ error: 'title and content are required' }, { status: 400 });
-  }
+  const { data, error } = await parseJson(request, docMutationSchema);
+  if (error) return error;
 
   const db = await getDb();
   const docs = db.collection<MarkdownDoc>('markdown_docs');
@@ -46,8 +49,8 @@ export async function POST(request: Request) {
 
   const result = await docs.insertOne({
     userId: new ObjectId(user.sub),
-    title,
-    content,
+    title: data.title,
+    content: data.content,
     createdAt: now,
     updatedAt: now
   });
