@@ -8,8 +8,52 @@ This guide documents how to recreate the app and configure authentication in thr
 ## 1. Create the Next.js app
 
 ```bash
-npx create-next-app@latest doc-u-maker --typescript --app --eslint --src-dir false --import-alias "@/*"
+npx create-next-app@latest doc-u-maker --typescript --app --eslint --no-src-dir --import-alias "@/*"
 cd doc-u-maker
+```
+
+Important:
+- `--src-dir` is a boolean flag, so using `--src-dir false` still enables `src/`.
+- Use `--no-src-dir` to keep `app/` at the project root instead of `src/app/`.
+
+If you already generated the app with `src/` and want to remove it:
+
+1. Move files/folders from `src/` to project root (adjust for what exists):
+
+```bash
+mv src/app ./app
+mv src/styles ./styles
+mv src/lib ./lib
+mv src/components ./components
+mv src/middleware.ts ./middleware.ts
+```
+
+2. Update `tsconfig.json` path alias to point at root instead of `src`:
+
+```json
+{
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./*"]
+    }
+  }
+}
+```
+
+If it still says `@/*: ["./src/*"]`, change it to `@/*: ["./*"]`.
+
+3. Remove the empty `src` folder:
+
+```bash
+rmdir src
+```
+
+4. Validate the app boots and typechecks:
+
+```bash
+npm run dev
+npm run lint
+npm run build
 ```
 
 Target stack used in this project:
