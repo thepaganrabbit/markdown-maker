@@ -1,0 +1,125 @@
+@import 'bootstrap/scss/bootstrap';
+
+:root {
+  --app-bg: #f3efe8;
+  --panel-bg: #fffdf8;
+  --ink: #1f2937;
+  --accent: #0b5ed7;
+  --grid-line: rgba(31, 41, 55, 0.14);
+}
+
+body {
+  background:
+    radial-gradient(circle at 10% 20%, rgba(11, 94, 215, 0.08), transparent 35%),
+    radial-gradient(circle at 90% 80%, rgba(25, 135, 84, 0.08), transparent 30%),
+    var(--app-bg);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+.auth-page {
+  max-width: 520px;
+}
+
+.auth-card {
+  background: var(--panel-bg);
+  border-radius: 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.users-main .card {
+  border-radius: 1rem;
+}
+
+.canvas-shell {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 1rem;
+  padding: 1rem;
+  min-height: 60vh;
+}
+
+.canvas-shell.drag-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 0.2rem rgba(11, 94, 215, 0.18);
+}
+
+.canvas-grid {
+  position: relative;
+}
+
+.grid-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--grid-line);
+}
+
+.canvas-item {
+  position: absolute;
+  left: 0;
+  right: 0;
+  min-height: 40px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  cursor: grab;
+}
+
+.canvas-item.is-dragging {
+  opacity: 0.55;
+  cursor: grabbing;
+}
+
+.canvas-item .btn-close {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+}
+
+.table-element {
+  padding-right: 1.75rem;
+}
+
+.table-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.table-controls label {
+  flex: 0 0 120px;
+}
+
+.table-grid {
+  overflow-x: auto;
+}
+
+.markdown-preview {
+  background: #111827;
+  color: #f9fafb;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  max-height: 70vh;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.docs-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.doc-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+
+.doc-row.active {
+  border-color: var(--accent);
+  background: rgba(11, 94, 215, 0.08);
+}

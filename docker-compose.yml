@@ -1,0 +1,16 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: documaker-mongo
+    restart: unless-stopped
+    ports:
+      - "27021:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+      MONGO_INITDB_DATABASE: documaker
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
