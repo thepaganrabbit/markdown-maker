@@ -26,6 +26,8 @@ export function assertOAuth2Config() {
   }
 }
 
+type OAuth2TokenResponse = { access_token: string; id_token?: string; refresh_token?: string };
+
 export function createOAuth2AuthUrl() {
   assertOAuth2Config();
   const state = crypto.randomBytes(24).toString('hex');
@@ -73,7 +75,7 @@ export async function exchangeCodeForToken(code: string) {
     throw new Error('OAuth2 token exchange failed');
   }
 
-  return (await response.json()) as { access_token: string; id_token?: string; refresh_token?: string };
+  return (await response.json()) as OAuth2TokenResponse;
 }
 
 export async function fetchOAuth2User(token: string) {
@@ -87,4 +89,44 @@ export async function fetchOAuth2User(token: string) {
   const json = (await response.json()) as { sub?: string; email?: string };
   if (!json.sub || !json.email) return null;
   return { sub: json.sub, email: json.email.toLowerCase() };
+}
+
+function decodeJwtPayload(token: string) {
+  const parts = token.split('.');
+  if (parts.length < 2 || !parts[1]) return null;
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const normalized = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    return JSON.parse(Buffer.from(normalized, 'base64').toString('utf8')) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function userFromTokenClaims(claims: Record<string, unknown> | null) {
+  if (!claims) return null;
+  const emailClaim =
+    (typeof claims.email === 'string' && claims.email) ||
+    (typeof claims.preferred_username === 'string' && claims.preferred_username) ||
+    (typeof claims.upn === 'string' && claims.upn) ||
+    null;
+  if (!emailClaim) return null;
+  const subClaim =
+    (typeof claims.sub === 'string' && claims.sub) ||
+    (typeof claims.oid === 'string' && claims.oid) ||
+    (typeof claims.user_id === 'string' && claims.user_id) ||
+    emailClaim;
+  return { sub: subClaim, email: emailClaim.toLowerCase() };
+}
+
+export async function resolveOAuth2User(token: OAuth2TokenResponse) {
+  if (env.OAUTH2_USERINFO_ENDPOINT) {
+    const profile = await fetchOAuth2User(token.access_token);
+    if (profile) return profile;
+  }
+
+  const idTokenUser = userFromTokenClaims(decodeJwtPayload(token.id_token ?? ''));
+  if (idTokenUser) return idTokenUser;
+
+  return userFromTokenClaims(decodeJwtPayload(token.access_token));
 }

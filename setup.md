@@ -159,7 +159,7 @@ Use this when authentication is delegated to an external IdP.
 AUTH_MODE=oauth2
 OAUTH2_AUTHORIZATION_ENDPOINT=https://idp.example.com/oauth2/authorize
 OAUTH2_TOKEN_ENDPOINT=https://idp.example.com/oauth2/token
-OAUTH2_USERINFO_ENDPOINT=https://idp.example.com/oauth2/userinfo
+OAUTH2_USERINFO_ENDPOINT=
 OAUTH2_CLIENT_ID=your-client-id
 OAUTH2_CLIENT_SECRET=your-client-secret
 OAUTH2_CALLBACK_URL=https://your-app.example.com/api/auth/oauth2/callback
@@ -170,7 +170,7 @@ Behavior:
 - `/api/auth/signup` and `/api/auth/login` return `403`.
 - User starts login at `/api/auth/oauth2/login`.
 - Callback route exchanges `code` at token endpoint.
-- User profile is resolved from userinfo endpoint.
+- User profile is resolved from `userinfo` endpoint if configured, otherwise by decoding `id_token`/`access_token` claims (`email`, `preferred_username`, or `upn`; subject from `sub`/`oid`/`user_id`).
 - App issues local access/refresh cookies and creates/updates local user record.
 
 ### Mode C: Both JWT and OAuth2
@@ -275,12 +275,12 @@ Defines:
 - OAuth2 auth URL builder.
 - State cookie management.
 - Authorization-code token exchange.
-- Userinfo fetch for user identity.
+- User identity resolution via userinfo or decoded token claims.
 
 ### `lib/requestAuth.ts`
 - Resolves auth from bearer header or `accessToken` cookie.
 - Accepts local JWT access tokens.
-- If bearer JWT fails and OAuth2 is enabled, can resolve user via OAuth2 userinfo endpoint.
+- If bearer JWT fails and OAuth2 is enabled, can resolve user via OAuth2 userinfo or decoded bearer token claims.
 
 ### `lib/authEdge.ts`
 - Edge-safe access token verification for middleware.

@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { verifyAccessToken } from '@/lib/auth';
-import { fetchOAuth2User, oauth2Enabled } from '@/lib/oauth2';
+import { oauth2Enabled, resolveOAuth2User } from '@/lib/oauth2';
 
 export async function getUserFromRequest(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -15,7 +15,7 @@ export async function getUserFromRequest(request: Request) {
 
   // In OAuth2 mode, allow bearer access tokens issued by the provider.
   if (headerToken && oauth2Enabled()) {
-    const oauthUser = await fetchOAuth2User(headerToken);
+    const oauthUser = await resolveOAuth2User({ access_token: headerToken, id_token: headerToken });
     if (oauthUser) {
       return { sub: oauthUser.sub, email: oauthUser.email, type: 'access' as const, exp: Number.MAX_SAFE_INTEGER };
     }

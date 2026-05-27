@@ -13,9 +13,9 @@ import {
 import { ensureCsrfCookie } from '@/lib/csrf';
 import {
   exchangeCodeForToken,
-  fetchOAuth2User,
   oauth2Enabled,
-  readOAuth2StateCookie
+  readOAuth2StateCookie,
+  resolveOAuth2User
 } from '@/lib/oauth2';
 import { createSession } from '@/lib/session';
 
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
   }
 
   const token = await exchangeCodeForToken(code);
-  const oauthUser = await fetchOAuth2User(token.access_token);
+  const oauthUser = await resolveOAuth2User(token);
   if (!oauthUser) {
     return NextResponse.json({ error: 'Failed to resolve OAuth2 user profile' }, { status: 401 });
   }

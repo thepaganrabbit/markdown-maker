@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   oauth2Enabled: vi.fn(() => true),
   readOAuth2StateCookie: vi.fn(() => 'state1'),
   exchangeCodeForToken: vi.fn(async () => ({ access_token: 'tok' })),
-  fetchOAuth2User: vi.fn(async () => ({ sub: 's', email: 'oauth@example.com' }))
+  resolveOAuth2User: vi.fn(async () => ({ sub: 's', email: 'oauth@example.com' }))
 }));
 
 vi.mock('next/headers', () => ({ cookies: () => ({ get: mocks.cookieGet }) }));
@@ -39,7 +39,7 @@ vi.mock('@/lib/oauth2', () => ({
   oauth2Enabled: mocks.oauth2Enabled,
   readOAuth2StateCookie: mocks.readOAuth2StateCookie,
   exchangeCodeForToken: mocks.exchangeCodeForToken,
-  fetchOAuth2User: mocks.fetchOAuth2User
+  resolveOAuth2User: mocks.resolveOAuth2User
 }));
 vi.mock('@/lib/validation', async () => {
   const actual = await vi.importActual<typeof import('@/lib/validation')>('@/lib/validation');
@@ -207,7 +207,7 @@ describe('auth refresh/signup/oauth2 callback', () => {
   });
 
   it('oauth callback returns 401 when user profile cannot be resolved', async () => {
-    mocks.fetchOAuth2User.mockResolvedValueOnce(null);
+    mocks.resolveOAuth2User.mockResolvedValueOnce(null);
     const res = await callbackGet(new Request('http://localhost/api/auth/oauth2/callback?code=1&state=state1'));
     expect(res.status).toBe(401);
   });
