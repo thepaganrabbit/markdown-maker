@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { ObjectId } from 'mongodb';
 import { getDb } from '@/lib/mongodb';
-import type { Session } from '@/lib/models';
+import type { Session } from '@/lib/types';
 import { env } from '@/lib/env';
 
 function hashRefreshToken(refreshToken: string) {

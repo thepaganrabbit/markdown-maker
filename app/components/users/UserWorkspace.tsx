@@ -2,22 +2,7 @@
 
 import ReactMarkdown from 'react-markdown';
 import { useEffect, useMemo, useRef, useState } from 'react';
-
-type ElementType =
-  | 'heading'
-  | 'heading2'
-  | 'heading3'
-  | 'heading4'
-  | 'boldHeading'
-  | 'text'
-  | 'line'
-  | 'table'
-  | 'code'
-  | 'definition'
-  | 'task'
-  | 'image'
-  | 'olist'
-  | 'ulist';
+import type { CanvasItem, ElementType, TableData, WorkspaceDocListItem } from '@/lib/types';
 
 const KNOWN_CODE_LANGUAGES = [
   'plaintext',
@@ -36,48 +21,6 @@ const KNOWN_CODE_LANGUAGES = [
   'yaml',
   'markdown'
 ] as const;
-
-type TableData = {
-  headers: string[];
-  rows: string[][];
-};
-
-type CanvasItem = {
-  id: string;
-  type: ElementType;
-  row: number;
-  content?: string;
-  table?: TableData;
-  code?: {
-    language: string;
-    customLanguage: string;
-    useCustomLanguage: boolean;
-    content: string;
-  };
-  definition?: {
-    term: string;
-    description: string;
-  };
-  task?: {
-    checked: boolean;
-    label: string;
-  };
-  image?: {
-    source: 'url' | 'upload';
-    url: string;
-    alt: string;
-  };
-  list?: {
-    items: string[];
-  };
-};
-
-type DocListItem = {
-  id: string;
-  title: string;
-  updatedAt: string;
-  createdAt: string;
-};
 
 const GRID_ROW_PX = 44;
 const INITIAL_ROWS = 18;
@@ -318,7 +261,7 @@ export default function UserWorkspace() {
   const [items, setItems] = useState<CanvasItem[]>([]);
   const [dragType, setDragType] = useState<ElementType | null>(null);
   const [dragItemId, setDragItemId] = useState<string | null>(null);
-  const [docs, setDocs] = useState<DocListItem[]>([]);
+  const [docs, setDocs] = useState<WorkspaceDocListItem[]>([]);
   const [title, setTitle] = useState('Untitled document');
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [message, setMessage] = useState('');

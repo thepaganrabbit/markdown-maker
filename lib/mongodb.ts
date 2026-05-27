@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { MongoClient } from 'mongodb';
 import { env } from '@/lib/env';
-import type { User } from '@/lib/models';
+import type { User } from '@/lib/types';
 
 let client: MongoClient | null = null;
 let clientPromise: Promise<MongoClient> | null = null;

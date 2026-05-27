@@ -1,4 +1,5 @@
-export type AppTheme = 'light' | 'dark';
+import type { AppTheme } from '@/lib/types';
+export type { AppTheme } from '@/lib/types';
 
 export const THEME_STORAGE_KEY = 'doc-u-maker:theme';
 

@@ -1,23 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
-type UserRow = {
-  id: string;
-  email: string;
-  role: 'user' | 'admin';
-  createdAt: string;
-  isOnline: boolean;
-};
-
-type Pagination = {
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-};
-type SortBy = 'createdAt' | 'email' | 'role';
-type SortDir = 'asc' | 'desc';
+import type { AdminSortBy as SortBy, AdminUserRow as UserRow, Pagination, SortDir, UserRole } from '@/lib/types';
 
 function getCookieValue(name: string) {
   const token = document.cookie
@@ -45,7 +29,7 @@ export default function AdminPanel() {
 
   const [createEmail, setCreateEmail] = useState('');
   const [createPassword, setCreatePassword] = useState('');
-  const [createRole, setCreateRole] = useState<'user' | 'admin'>('user');
+  const [createRole, setCreateRole] = useState<UserRole>('user');
   const [resetUser, setResetUser] = useState<UserRow | null>(null);
   const [resetPassword, setResetPassword] = useState('');
 

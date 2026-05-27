@@ -1,16 +1,10 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { env } from '@/lib/env';
+import type { JwtPayload } from '@/lib/types';
 
 const ACCESS_TTL = env.ACCESS_TOKEN_TTL;
 const REFRESH_TTL_DAYS = env.REFRESH_TOKEN_TTL_DAYS;
-
-type JwtPayload = {
-  sub: string;
-  email: string;
-  type: 'access' | 'refresh';
-  exp: number;
-};
 
 function parseTtl(ttl: string): number {
   const match = ttl.match(/^(\d+)([smhd])$/);

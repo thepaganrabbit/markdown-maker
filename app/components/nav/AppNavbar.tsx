@@ -2,12 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-
-type MeUser = {
-  id: string;
-  email: string;
-  role: 'user' | 'admin';
-};
+import type { MeUser } from '@/lib/types';
 
 function getCookieValue(name: string) {
   const token = document.cookie

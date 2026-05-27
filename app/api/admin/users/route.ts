@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { getDb } from '@/lib/mongodb';
-import type { Session, User } from '@/lib/models';
+import type { AdminSortBy as SortField, Session, SortDir, User } from '@/lib/types';
 import { hashPassword } from '@/lib/auth';
 import { requireAdmin } from '@/lib/admin';
 import { parseJson, adminCreateUserSchema } from '@/lib/validation';
@@ -11,8 +11,6 @@ const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 50;
 const SORT_FIELDS = ['createdAt', 'email', 'role'] as const;
-type SortField = (typeof SORT_FIELDS)[number];
-type SortDir = 'asc' | 'desc';
 
 export async function GET(request: Request) {
   const { error } = await requireAdmin(request);

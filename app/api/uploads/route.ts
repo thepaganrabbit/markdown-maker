@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb';
 import { NextResponse } from 'next/server';
 import { verifyCsrfForCookieAuth } from '@/lib/csrf';
 import { getDb } from '@/lib/mongodb';
-import type { UploadedImage } from '@/lib/models';
+import type { UploadedImage } from '@/lib/types';
 import { getUserFromRequest } from '@/lib/requestAuth';
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;

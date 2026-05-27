@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
-import type { User } from '@/lib/models';
+import type { User } from '@/lib/types';
 import { accessCookieOptions } from '@/lib/authCookies';
 import {
   createAccessToken,

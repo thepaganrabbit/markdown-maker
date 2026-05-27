@@ -11,7 +11,7 @@ import {
 import { accessCookieOptions } from '@/lib/authCookies';
 import { ensureCsrfCookie } from '@/lib/csrf';
 import { getDb } from '@/lib/mongodb';
-import type { User } from '@/lib/models';
+import type { User } from '@/lib/types';
 import { findSession, replaceSession } from '@/lib/session';
 import { rateLimit } from '@/lib/security';
 

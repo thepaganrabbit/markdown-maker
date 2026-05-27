@@ -3,12 +3,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
-
-type Props = {
-  mode: 'login' | 'signup';
-};
-
-export default function AuthForm({ mode }: Props) {
+import type { AuthFormProps } from '@/lib/types';
+export default function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

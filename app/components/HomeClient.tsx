@@ -2,12 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-
-type User = {
-  id: string;
-  email: string;
-  role: 'user' | 'admin';
-};
+import type { MeUser } from '@/lib/types';
 
 function getCookieValue(name: string) {
   const token = document.cookie
@@ -20,7 +15,7 @@ function getCookieValue(name: string) {
 }
 
 export default function HomeClient() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<MeUser | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {

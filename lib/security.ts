@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-
-type Bucket = { count: number; resetAt: number };
+import type { Bucket } from '@/lib/types';
 
 const buckets = new Map<string, Bucket>();
 

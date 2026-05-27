@@ -2,20 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { applyTheme, readStoredTheme, saveTheme, type AppTheme } from '@/lib/theme';
-
-type SettingsUser = {
-  id: string;
-  email: string;
-  role: 'user' | 'admin';
-  createdAt: string;
-};
-
-type DocItem = {
-  id: string;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-};
+import type { SettingsDocItem, SettingsUser } from '@/lib/types';
 
 function getCookieValue(name: string) {
   const token = document.cookie
@@ -29,7 +16,7 @@ function getCookieValue(name: string) {
 
 export default function SettingsClient() {
   const [user, setUser] = useState<SettingsUser | null>(null);
-  const [docs, setDocs] = useState<DocItem[]>([]);
+  const [docs, setDocs] = useState<SettingsDocItem[]>([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [renameDocId, setRenameDocId] = useState<string | null>(null);

@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
-import type { MarkdownDoc } from '@/lib/models';
+import type { MarkdownDoc } from '@/lib/types';
 import { verifyCsrfForCookieAuth } from '@/lib/csrf';
 import { getUserFromRequest } from '@/lib/requestAuth';
 import { docMutationSchema, parseJson } from '@/lib/validation';

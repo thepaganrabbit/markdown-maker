@@ -1,9 +1,4 @@
-type JwtPayload = {
-  sub: string;
-  email: string;
-  type: 'access' | 'refresh';
-  exp: number;
-};
+import type { JwtPayload } from '@/lib/types';
 
 function getAccessSecret(): string {
   const value = process.env.JWT_ACCESS_SECRET;

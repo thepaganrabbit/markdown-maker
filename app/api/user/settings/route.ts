@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { comparePassword, hashPassword } from '@/lib/auth';
 import { verifyCsrfForCookieAuth } from '@/lib/csrf';
 import { getDb } from '@/lib/mongodb';
-import type { User } from '@/lib/models';
+import type { User } from '@/lib/types';
 import { getUserFromRequest } from '@/lib/requestAuth';
 import { parseJson, userSettingsUpdateSchema } from '@/lib/validation';
 

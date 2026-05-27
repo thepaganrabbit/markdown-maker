@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
-import type { UploadedImage } from '@/lib/models';
+import type { UploadedImage } from '@/lib/types';
 import { getUserFromRequest } from '@/lib/requestAuth';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {

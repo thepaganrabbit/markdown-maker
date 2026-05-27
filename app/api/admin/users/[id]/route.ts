@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
-import type { User } from '@/lib/models';
+import type { User } from '@/lib/types';
 import { hashPassword } from '@/lib/auth';
 import { requireAdmin } from '@/lib/admin';
 import { verifyCsrfForCookieAuth } from '@/lib/csrf';
