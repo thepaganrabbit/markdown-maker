@@ -9,6 +9,7 @@ function hashRefreshToken(refreshToken: string) {
 }
 
 function sessionQuery(refreshToken: string) {
+  // Support both storage modes so reads/deletes work regardless of token-hash setting.
   if (env.HASH_REFRESH_TOKENS) {
     return { refreshTokenHash: hashRefreshToken(refreshToken) };
   }

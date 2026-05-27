@@ -25,6 +25,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
+  // Return raw bytes so markdown image links can stream directly from this route.
   return new NextResponse(new Uint8Array(image.bytes), {
     status: 200,
     headers: {

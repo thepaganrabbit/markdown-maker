@@ -29,6 +29,7 @@ export async function GET(request: Request) {
   const state = url.searchParams.get('state');
   const stateCookie = readOAuth2StateCookie();
 
+  // OAuth2 state must round-trip via cookie to prevent CSRF/login injection.
   if (!code || !state || !stateCookie || state !== stateCookie) {
     return NextResponse.json({ error: 'Invalid OAuth2 callback state' }, { status: 400 });
   }
@@ -71,6 +72,7 @@ export async function GET(request: Request) {
   const response = NextResponse.redirect(new URL('/users', request.url));
   response.cookies.set('refreshToken', refreshToken, refreshCookieOptions());
   response.cookies.set('accessToken', accessToken, accessCookieOptions());
+  // One-time state cookie: clear it after successful callback handling.
   response.cookies.set('oauth2State', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

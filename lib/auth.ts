@@ -14,6 +14,7 @@ type JwtPayload = {
 
 function parseTtl(ttl: string): number {
   const match = ttl.match(/^(\d+)([smhd])$/);
+  // Fall back to 15m when ttl format is invalid to avoid throwing at runtime.
   if (!match) return 15 * 60;
   const value = Number(match[1]);
   const unit = match[2];

@@ -30,6 +30,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
+  // Prevent an admin from removing their own admin role mid-session.
   if (target._id!.toString() === adminUser._id!.toString() && data.role === 'user') {
     return NextResponse.json({ error: 'Cannot demote current admin session' }, { status: 400 });
   }
@@ -71,6 +72,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });
   }
 
+  // Prevent accidental lockout by deleting the active admin account.
   if (adminUser._id!.toString() === params.id) {
     return NextResponse.json({ error: 'Cannot delete your own admin user' }, { status: 400 });
   }

@@ -13,6 +13,7 @@ export async function getUserFromRequest(request: Request) {
   const jwtPayload = verifyAccessToken(token);
   if (jwtPayload) return jwtPayload;
 
+  // In OAuth2 mode, allow bearer access tokens issued by the provider.
   if (headerToken && oauth2Enabled()) {
     const oauthUser = await fetchOAuth2User(headerToken);
     if (oauthUser) {

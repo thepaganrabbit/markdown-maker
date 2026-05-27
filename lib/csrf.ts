@@ -22,6 +22,7 @@ export function verifyCsrfForCookieAuth(request: Request): NextResponse | null {
   if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return null;
 
   const hasBearer = request.headers.get('authorization')?.startsWith('Bearer ');
+  // Non-cookie bearer auth is not vulnerable to browser CSRF.
   if (hasBearer) return null;
 
   const cookieToken = cookies().get(CSRF_COOKIE_NAME)?.value;

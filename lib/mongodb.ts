@@ -15,6 +15,7 @@ function getClientPromise() {
   if (clientPromise) return clientPromise;
 
   if (process.env.NODE_ENV === 'development') {
+    // Reuse a global client in dev to avoid connection churn during HMR reloads.
     if (!globalWithMongo._mongoClientPromise) {
       client = new MongoClient(env.MONGODB_URI);
       globalWithMongo._mongoClientPromise = client.connect();
@@ -55,6 +56,7 @@ async function ensureAdminUser(mongoClient: MongoClient) {
 async function ensureIndexes(mongoClient: MongoClient) {
   if (indexesPromise) return indexesPromise;
 
+  // Run once per process to keep startup deterministic and idempotent.
   indexesPromise = (async () => {
     const db = mongoClient.db();
     await Promise.all([

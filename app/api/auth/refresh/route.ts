@@ -31,6 +31,7 @@ export async function POST(request: Request) {
   }
 
   const existingSession = await findSession(refreshToken);
+  // Require both a valid JWT and a live server-side session record.
   if (!existingSession || existingSession.expiresAt < new Date()) {
     return NextResponse.json({ error: 'Session expired' }, { status: 401 });
   }
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
   const newRefreshToken = createRefreshToken(payload.sub, payload.email);
   const newRefreshExpiresAt = refreshTokenExpiresAt();
 
+  // Rotate refresh token on every refresh to reduce replay risk.
   await replaceSession(refreshToken, newRefreshToken, newRefreshExpiresAt);
 
   const response = NextResponse.json({

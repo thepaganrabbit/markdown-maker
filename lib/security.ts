@@ -14,6 +14,7 @@ export function rateLimit(
   request: Request,
   opts: { keyPrefix: string; windowMs: number; limit: number }
 ): NextResponse | null {
+  // In-memory limiter: resets on process restart and is per-instance.
   const ip = getClientIp(request);
   const now = Date.now();
   const key = `${opts.keyPrefix}:${ip}`;
